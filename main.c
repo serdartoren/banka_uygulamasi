@@ -184,18 +184,27 @@ void show_balance(Account_t *acc)
 
 void transfer_loading_animation(void)
 {
-    const char spinner[] = "|/-\\";
+    const int total_steps = 20;
+    const int bar_width = 20;
 
-    printf("Transfer islemi gerceklestiriliyor ");
+    printf("Transfer islemi gerceklestiriliyor...\n");
 
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i <= total_steps; i++)
     {
-        printf("\rTransfer islemi gerceklestiriliyor %c", spinner[i % 4]);
+        int filled = (i * bar_width) / total_steps;
+        int percent = (i * 100) / total_steps;
+
+        printf("\r[");
+        for (int j = 0; j < bar_width; j++)
+        {
+            printf("%c", j < filled ? '#' : ' ');
+        }
+        printf("] %3d%%", percent);
         fflush(stdout);
-        Sleep(200);
+        Sleep(100);
     }
 
-    printf("\rTransfer islemi gerceklestiriliyor tamamlandi.\n");
+    printf("\nTransfer islemi tamamlandi.\n");
 }
 
 void transfer(Account_t *sender)
