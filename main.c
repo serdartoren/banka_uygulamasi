@@ -182,6 +182,31 @@ void show_balance(Account_t *acc)
     printf("Bakiyeniz: %.2f TL\n", acc->balance);
 }
 
+void transfer_loading_animation(void)
+{
+    const int total_steps = 20;
+    const int bar_width = 20;
+
+    printf("Transfer islemi gerceklestiriliyor...\n");
+
+    for (int i = 0; i <= total_steps; i++)
+    {
+        int filled = (i * bar_width) / total_steps;
+        int percent = (i * 100) / total_steps;
+
+        printf("\r[");
+        for (int j = 0; j < bar_width; j++)
+        {
+            printf("%c", j < filled ? '#' : ' ');
+        }
+        printf("] %3d%%", percent);
+        fflush(stdout);
+        Sleep(100);
+    }
+
+    printf("\nTransfer islemi tamamlandi.\n");
+}
+
 void transfer(Account_t *sender)
 {
     char target_username[32];
@@ -222,6 +247,7 @@ void transfer(Account_t *sender)
     sender->balance -= amount;
     accounts[target_index].balance += amount;
 
+    transfer_loading_animation();
     save_accounts();
 
     printf("Transfer basarili.\n");
