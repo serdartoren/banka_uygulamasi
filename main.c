@@ -289,10 +289,8 @@ void main_menu(void)
             printf("Program kapatildi.\n");
             break;
         }
-        else
-        {
-            printf("Gecersiz secim!\n");
-        }
+
+        system("cls");
     }
 }
 
