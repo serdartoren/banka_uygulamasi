@@ -89,3 +89,18 @@ Bu simülatörde kullanılan register tipleri **Holding Register (4x)** tipinded
 - Yazma için: Function Code **06 (Write Single Register)** veya **16 (Write Multiple Registers)**
 
 Coils (0x), Discrete Inputs (1x) ve Input Registers (3x) bu senaryo için kullanılmaz.
+
+
+## Master Test Client
+
+Simülatörü test etmek için `master_tester.py` dosyası eklendi.
+
+```bash
+python master_tester.py --host 127.0.0.1 --port 5020 --unit-id 1
+```
+
+Bu istemci sırasıyla:
+1. Register'ları okur.
+2. `REG_CLEAR_ALL` yazar.
+3. `REG_RS1_TEST` için `1 -> 2 -> 3/-1` akışını takip eder.
+4. `REG_ALL_TEST` yazar ve tekrar register okur.
