@@ -8,7 +8,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 
-from pyModbusTCP.server import DataBank, ModbusServer
+from pyModbusTCP.server import ModbusServer
 
 REG_ALL_TEST = 0
 REG_CLEAR_ALL = 1
@@ -36,10 +36,11 @@ class SimulatorState:
 
 
 class RS8Simulator:
-    def __init__(self, test_step_delay: float) -> None:
+    def __init__(self, test_step_delay: float, server: ModbusServer) -> None:
         self.state = SimulatorState(test_step_delay=test_step_delay)
         self._lock = threading.Lock()
-        DataBank.set_words(0, [0] * REGISTER_COUNT)
+        self.server = server
+        self.server.data_bank.set_holding_registers(0, [0] * REGISTER_COUNT)
 
     def process_write(self, address: int, values: list[int]) -> None:
         logging.info("MODBUS WRITE | hr[%d..%d] <- %s", address, address + len(values) - 1, values)
@@ -60,7 +61,7 @@ class RS8Simulator:
 
     def _clear_all(self) -> None:
         with self._lock:
-            DataBank.set_words(0, [0] * REGISTER_COUNT)
+            self.server.data_bank.set_holding_registers(0, [0] * REGISTER_COUNT)
             self.state.clear_outputs()
         logging.info("Tüm register/output sıfırlandı.")
 
@@ -73,22 +74,22 @@ class RS8Simulator:
             with self.state.lock:
                 self.state.outputs[i] = False
             logging.info("RS%d PASIF", i + 1)
-        DataBank.set_words(REG_ALL_TEST, [0])
+        self.server.data_bank.set_holding_registers(REG_ALL_TEST, [0])
         logging.info("ALL_TEST tamamlandı.")
 
     def _run_single_test(self, idx: int) -> None:
         reg = REG_SINGLE_TEST_START + idx
         try:
-            DataBank.set_words(reg, [VALUE_RUNNING])
+            self.server.data_bank.set_holding_registers(reg, [VALUE_RUNNING])
             with self.state.lock:
                 self.state.outputs[idx] = True
             time.sleep(self.state.test_step_delay)
             with self.state.lock:
                 self.state.outputs[idx] = False
-            DataBank.set_words(reg, [VALUE_SUCCESS])
+            self.server.data_bank.set_holding_registers(reg, [VALUE_SUCCESS])
             logging.info("RS%d test BAŞARILI", idx + 1)
         except Exception:
-            DataBank.set_words(reg, [VALUE_ERROR])
+            self.server.data_bank.set_holding_registers(reg, [VALUE_ERROR])
             logging.exception("RS%d test HATALI", idx + 1)
 
 
@@ -111,9 +112,9 @@ def beacon_sender(name: str, ip: str, modbus_port: int, udp_port: int, interval:
 
 
 def write_monitor(sim: RS8Simulator, poll: float = 0.05) -> None:
-    prev = DataBank.get_words(0, REGISTER_COUNT)
+    prev = sim.server.data_bank.get_holding_registers(0, REGISTER_COUNT)
     while True:
-        cur = DataBank.get_words(0, REGISTER_COUNT)
+        cur = sim.server.data_bank.get_holding_registers(0, REGISTER_COUNT)
         if cur != prev:
             changes = []
             for i, (a, b) in enumerate(zip(prev, cur)):
@@ -139,12 +140,12 @@ def main() -> None:
     logging.info("Cihaz adı: %s", args.name)
     logging.info("Modbus TCP: %s:%d", ip, args.modbus_port)
 
-    sim = RS8Simulator(test_step_delay=args.test_step_delay)
-    threading.Thread(target=beacon_sender, args=(args.name, ip, args.modbus_port, args.beacon_udp_port, args.beacon_interval), daemon=True).start()
-    threading.Thread(target=write_monitor, args=(sim,), daemon=True).start()
-
     server = ModbusServer(host="0.0.0.0", port=args.modbus_port, no_block=True)
     server.start()
+
+    sim = RS8Simulator(test_step_delay=args.test_step_delay, server=server)
+    threading.Thread(target=beacon_sender, args=(args.name, ip, args.modbus_port, args.beacon_udp_port, args.beacon_interval), daemon=True).start()
+    threading.Thread(target=write_monitor, args=(sim,), daemon=True).start()
     logging.info("Server listening.")
     try:
         while True:

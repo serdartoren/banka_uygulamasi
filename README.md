@@ -128,3 +128,5 @@ Bu istemci sırasıyla:
 
 
 - Not: `simulator.py` artık `pyModbusTCP` tabanlıdır; Hercules ile 0..9 holding register yazımları doğrudan çalışır.
+
+- Not: Yeni sürümde `pyModbusTCP` için deprecated `DataBank` class methodları kullanılmaz; instance tabanlı `server.data_bank` API kullanılır.
