@@ -62,11 +62,22 @@ Aşağıdaki tüm register'lar Holding Register (4x) olup hem okunabilir hem yaz
 
 - `REG_RS*_TEST` (2..9):
   - İlgili çıkışı tek başına test eder.
-  - `1` yazıldığında ilgili çıkış kısa süre aktif/pasif yapılır.
-  - Test bitince ilgili register tekrar `0` yapılır.
+  - Durum akışı aşağıdaki gibidir:
+    - `1` = Test isteği (client yazar)
+    - `2` = Test çalışıyor
+    - `3` = Test başarılı
+    - `-1` = Test hatalı (`0xFFFF` olarak okunur)
 
 ## Notlar
 
 - Modbus server `0.0.0.0` üzerinde dinler.
 - Beacon, `255.255.255.255:<beacon_udp_port>` adresine broadcast edilir.
 - Gerçek RS sürücü işlemleri dahil değildir; bu uygulama otomasyon ekipleri için simülasyondur.
+
+## RS Test Durum Kodları
+
+- `0`: Boş/idle
+- `1`: Test isteği
+- `2`: Test devam ediyor
+- `3`: Test başarılı
+- `-1`: Test hatalı (Modbus register değerinde `65535` / `0xFFFF`)

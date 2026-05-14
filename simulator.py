@@ -52,6 +52,12 @@ class SimulatorState:
 class SimulatorDataBlock(ModbusSequentialDataBlock):
     """Register yazımlarını yakalayan Modbus data block."""
 
+    VALUE_IDLE = 0
+    VALUE_REQUEST = 1
+    VALUE_RUNNING = 2
+    VALUE_SUCCESS = 3
+    VALUE_ERROR = 0xFFFF  # Modbus'ta signed -1 karşılığı
+
     # Modbus istemcilerde 0..9 gibi görünen ofsetler
     REG_ALL_TEST = 0
     REG_CLEAR_ALL = 1
@@ -70,16 +76,13 @@ class SimulatorDataBlock(ModbusSequentialDataBlock):
 
         for offset, value in enumerate(values):
             reg = (address - 1) + offset
-            if value != 1:
-                continue
-
-            if reg == self.REG_ALL_TEST:
+            if reg == self.REG_ALL_TEST and value == self.VALUE_REQUEST:
                 threading.Thread(target=self._run_all_test_and_reset, daemon=True).start()
-            elif reg == self.REG_CLEAR_ALL:
+            elif reg == self.REG_CLEAR_ALL and value == self.VALUE_REQUEST:
                 self._clear_all_registers()
-            elif self.REG_SINGLE_TEST_START <= reg <= self.REG_SINGLE_TEST_END:
+            elif self.REG_SINGLE_TEST_START <= reg <= self.REG_SINGLE_TEST_END and value == self.VALUE_REQUEST:
                 index = reg - self.REG_SINGLE_TEST_START
-                threading.Thread(target=self._run_single_test_and_reset, args=(index,), daemon=True).start()
+                threading.Thread(target=self._run_single_test_with_status, args=(index,), daemon=True).start()
 
     def _clear_all_registers(self) -> None:
         self.state.clear()
@@ -90,9 +93,15 @@ class SimulatorDataBlock(ModbusSequentialDataBlock):
         self.state.run_all_output_test()
         super().setValues(self.REG_ALL_TEST + 1, [0])
 
-    def _run_single_test_and_reset(self, index: int) -> None:
-        self.state.run_single_output_test(index)
-        super().setValues(self.REG_SINGLE_TEST_START + index + 1, [0])
+    def _run_single_test_with_status(self, index: int) -> None:
+        reg_addr = self.REG_SINGLE_TEST_START + index + 1
+        try:
+            super().setValues(reg_addr, [self.VALUE_RUNNING])
+            self.state.run_single_output_test(index)
+            super().setValues(reg_addr, [self.VALUE_SUCCESS])
+        except Exception:
+            logging.exception("RS%d testinde hata oluştu.", index + 1)
+            super().setValues(reg_addr, [self.VALUE_ERROR])
 
 
 def resolve_local_ip() -> str:
