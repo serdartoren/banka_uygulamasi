@@ -22,25 +22,60 @@ STATUS_ERROR = 0xFFFF
 
 
 def _read_holding_registers(client: ModbusTcpClient, address: int, count: int, unit_id: int):
-    """pymodbus sürümleri arası parametre farkını tolere eder."""
-    try:
-        return client.read_holding_registers(address=address, count=count, slave=unit_id)
-    except TypeError:
-        return client.read_holding_registers(address=address, count=count, device_id=unit_id)
+    """pymodbus sürümleri/çağrı imzaları arası farkları tolere eder."""
+    attempts = [
+        lambda: client.read_holding_registers(address=address, count=count, slave=unit_id),
+        lambda: client.read_holding_registers(address=address, count=count, device_id=unit_id),
+        lambda: client.read_holding_registers(address=address, count=count, unit=unit_id),
+        lambda: client.read_holding_registers(address=address, count=count),
+    ]
+    last_exc = None
+    for call in attempts:
+        try:
+            return call()
+        except TypeError as exc:
+            last_exc = exc
+            continue
+    raise RuntimeError(f"read_holding_registers çağrısı için uyumlu imza bulunamadı: {last_exc}")
 
 
 def _write_register(client: ModbusTcpClient, address: int, value: int, unit_id: int):
-    """pymodbus sürümleri arası parametre farkını tolere eder."""
-    try:
-        return client.write_register(address=address, value=value, slave=unit_id)
-    except TypeError:
-        return client.write_register(address=address, value=value, device_id=unit_id)
+    """pymodbus sürümleri/çağrı imzaları arası farkları tolere eder."""
+    attempts = [
+        lambda: client.write_register(address=address, value=value, slave=unit_id),
+        lambda: client.write_register(address=address, value=value, device_id=unit_id),
+        lambda: client.write_register(address=address, value=value, unit=unit_id),
+        lambda: client.write_register(address=address, value=value),
+    ]
+    last_exc = None
+    for call in attempts:
+        try:
+            return call()
+        except TypeError as exc:
+            last_exc = exc
+            continue
+    raise RuntimeError(f"write_register çağrısı için uyumlu imza bulunamadı: {last_exc}")
+
+
+def _is_ok_response(rr) -> bool:
+    return rr is not None and (not rr.isError()) and hasattr(rr, "registers")
+
+
+def _probe_read(client: ModbusTcpClient, unit_id: int, address: int, count: int):
+    rr = _read_holding_registers(client, address=address, count=count, unit_id=unit_id)
+    return rr
+
+
+def _read_or_raise(client: ModbusTcpClient, unit_id: int, address: int, count: int):
+    rr = _probe_read(client, unit_id, address, count)
+    if not _is_ok_response(rr):
+        raise RuntimeError(f"Register okuma hatası: {rr}")
+    return rr
+
 
 
 def read_registers(client: ModbusTcpClient, unit_id: int, base_address: int) -> List[int]:
-    rr = _read_holding_registers(client, address=base_address, count=REGISTER_COUNT, unit_id=unit_id)
-    if rr.isError():
-        raise RuntimeError(f"Register okuma hatası: {rr}")
+    rr = _read_or_raise(client, unit_id, address=base_address, count=REGISTER_COUNT)
     return list(rr.registers)
 
 
@@ -76,11 +111,14 @@ def wait_rs_status(client: ModbusTcpClient, unit_id: int, rs_index: int, timeout
 
 def detect_base_address(client: ModbusTcpClient, unit_id: int) -> int:
     """Sunucunun 0- veya 1-tabanlı adresleme beklentisini tespit eder."""
+    errors = []
     for base in (0, 1):
-        rr = _read_holding_registers(client, address=base, count=REGISTER_COUNT, unit_id=unit_id)
-        if not rr.isError():
-            return base
-    raise RuntimeError("Register okuma başarısız: hem 0-tabanlı hem 1-tabanlı denemeler hata verdi.")
+        for count in (REGISTER_COUNT, 1):
+            rr = _probe_read(client, unit_id, address=base, count=count)
+            if _is_ok_response(rr):
+                return base
+            errors.append(f"base={base}, count={count}, resp={rr}")
+    raise RuntimeError("Register okuma başarısız. Denemeler: " + " | ".join(errors))
 
 def run_test(host: str, port: int, unit_id: int, timeout: float, poll: float) -> None:
     client = ModbusTcpClient(host=host, port=port)

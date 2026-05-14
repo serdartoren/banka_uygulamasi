@@ -106,3 +106,4 @@ Bu istemci sırasıyla:
 4. `REG_ALL_TEST` yazar ve tekrar register okur.
 - Not: `master_tester.py`, farklı `pymodbus` sürümlerindeki `slave/device_id` parametre farkını otomatik yönetir.
 - Not: İstemci, sunucuya göre register adresleme tabanını (0 veya 1) otomatik algılar.
+- Eğer yine okuma hatası alırsanız önce `simulator.py` sürecinin çalıştığını ve portun (`5020`) açık olduğunu doğrulayın.
