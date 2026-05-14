@@ -17,6 +17,7 @@ Gerçek RS haberleşme katmanı yoktur; yalnızca Modbus register davranışı v
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+# simulator sunucusu için pyModbusTCP, master tester için pymodbus kullanılır
 ```
 
 ## Çalıştırma
@@ -124,3 +125,6 @@ Bu istemci sırasıyla:
 
 - Not: Sunucu, bazı pymodbus sürümlerindeki 0/1 tabanlı adresleme farklarını tolere edecek şekilde gelen yazımları normalize eder.
 - Not: Beacon logu terminali doldurmaması için seyrek yazdırılır; Modbus READ/WRITE/TRIGGER logları görünür kalır.
+
+
+- Not: `simulator.py` artık `pyModbusTCP` tabanlıdır; Hercules ile 0..9 holding register yazımları doğrudan çalışır.
