@@ -52,20 +52,24 @@ class SimulatorState:
 class SimulatorDataBlock(ModbusSequentialDataBlock):
     """Register yazımlarını yakalayan Modbus data block."""
 
+    # Modbus istemcilerde 0..9 gibi görünen ofsetler
     REG_ALL_TEST = 0
     REG_CLEAR_ALL = 1
     REG_SINGLE_TEST_START = 2
     REG_SINGLE_TEST_END = 9
 
     def __init__(self, state: SimulatorState) -> None:
-        super().__init__(0, [0] * 10)
+        # pymodbus 3.x sequential block adresi 1 tabanlı bekliyor
+        super().__init__(1, [0] * 10)
         self.state = state
 
     def setValues(self, address, values):  # noqa: N802 - pymodbus API
+        # pymodbus datastore iç adreslemeyi çoğu sürümde 1 tabanlı verir.
+        # Biz dokümantasyonda 0..9 ofset kullanıyoruz, bu yüzden normalize ediyoruz.
         super().setValues(address, values)
 
         for offset, value in enumerate(values):
-            reg = address + offset
+            reg = (address - 1) + offset
             if value != 1:
                 continue
 
@@ -79,16 +83,16 @@ class SimulatorDataBlock(ModbusSequentialDataBlock):
 
     def _clear_all_registers(self) -> None:
         self.state.clear()
-        super().setValues(0, [0] * 10)
+        super().setValues(1, [0] * 10)
         logging.info("10 register sıfırlandı.")
 
     def _run_all_test_and_reset(self) -> None:
         self.state.run_all_output_test()
-        super().setValues(self.REG_ALL_TEST, [0])
+        super().setValues(self.REG_ALL_TEST + 1, [0])
 
     def _run_single_test_and_reset(self, index: int) -> None:
         self.state.run_single_output_test(index)
-        super().setValues(self.REG_SINGLE_TEST_START + index, [0])
+        super().setValues(self.REG_SINGLE_TEST_START + index + 1, [0])
 
 
 def resolve_local_ip() -> str:

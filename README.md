@@ -34,6 +34,9 @@ Opsiyonel parametreler:
 
 Aşağıdaki tüm register'lar Holding Register (4x) olup hem okunabilir hem yazılabilirdir.
 
+> Not: `pymodbus` 3.x sürümlerinde datastore başlangıç adresi teknik olarak 1 tabanlıdır.
+> Bu simülatörde kullanıcıya görünen register ofsetleri yine **0..9** olarak korunmuştur.
+
 ```text
 0  -> REG_ALL_TEST
 1  -> REG_CLEAR_ALL
