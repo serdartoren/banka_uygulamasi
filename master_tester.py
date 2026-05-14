@@ -21,15 +21,31 @@ STATUS_SUCCESS = 3
 STATUS_ERROR = 0xFFFF
 
 
+def _read_holding_registers(client: ModbusTcpClient, address: int, count: int, unit_id: int):
+    """pymodbus sürümleri arası parametre farkını tolere eder."""
+    try:
+        return client.read_holding_registers(address=address, count=count, slave=unit_id)
+    except TypeError:
+        return client.read_holding_registers(address=address, count=count, device_id=unit_id)
+
+
+def _write_register(client: ModbusTcpClient, address: int, value: int, unit_id: int):
+    """pymodbus sürümleri arası parametre farkını tolere eder."""
+    try:
+        return client.write_register(address=address, value=value, slave=unit_id)
+    except TypeError:
+        return client.write_register(address=address, value=value, device_id=unit_id)
+
+
 def read_registers(client: ModbusTcpClient, unit_id: int) -> List[int]:
-    rr = client.read_holding_registers(address=0, count=REGISTER_COUNT, slave=unit_id)
+    rr = _read_holding_registers(client, address=0, count=REGISTER_COUNT, unit_id=unit_id)
     if rr.isError():
         raise RuntimeError(f"Register okuma hatası: {rr}")
     return list(rr.registers)
 
 
 def write_single(client: ModbusTcpClient, unit_id: int, address: int, value: int) -> None:
-    wr = client.write_register(address=address, value=value, slave=unit_id)
+    wr = _write_register(client, address=address, value=value, unit_id=unit_id)
     if wr.isError():
         raise RuntimeError(f"Register yazma hatası (addr={address}, value={value}): {wr}")
 
