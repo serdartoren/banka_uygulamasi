@@ -114,5 +114,8 @@ Bu istemci sırasıyla:
 - 10 register oku (`0..9`): `00 01 00 00 00 06 01 03 00 00 00 0A`
 - `REG_ALL_TEST` tetikle (`reg0=1`): `00 02 00 00 00 06 01 06 00 00 00 01`
 - `REG_CLEAR_ALL` tetikle (`reg1=1`): `00 03 00 00 00 06 01 06 00 01 00 01`
+- RS1 tekil test (`reg2=1`): `00 04 00 00 00 06 01 06 00 02 00 01`
 
 > Eğer yanıtta `83 02` görürseniz bu "Illegal Data Address" demektir (yanlış register adresi/uzunluğu).
+
+- Sunucu gelen read/write ve trigger olaylarını terminale loglar (MODBUS READ/WRITE ve TRIGGER satırları).

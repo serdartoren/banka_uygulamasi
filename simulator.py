@@ -86,11 +86,14 @@ class SimulatorDataBlock(ModbusSparseDataBlock):
         for offset, value in enumerate(values):
             reg = address + offset
             if reg == self.REG_ALL_TEST and value == self.VALUE_REQUEST:
+                logging.info("TRIGGER: REG_ALL_TEST (reg=%d) isteği alındı.", reg)
                 threading.Thread(target=self._run_all_test_and_reset, daemon=True).start()
             elif reg == self.REG_CLEAR_ALL and value == self.VALUE_REQUEST:
+                logging.info("TRIGGER: REG_CLEAR_ALL (reg=%d) isteği alındı.", reg)
                 self._clear_all_registers()
             elif self.REG_SINGLE_TEST_START <= reg <= self.REG_SINGLE_TEST_END and value == self.VALUE_REQUEST:
                 index = reg - self.REG_SINGLE_TEST_START
+                logging.info("TRIGGER: REG_RS%d_TEST (reg=%d) isteği alındı.", index + 1, reg)
                 threading.Thread(target=self._run_single_test_with_status, args=(index,), daemon=True).start()
 
     def _clear_all_registers(self) -> None:
@@ -144,7 +147,8 @@ def run_server(name: str, modbus_port: int, beacon_udp_port: int, beacon_interva
     block = SimulatorDataBlock(state)
     # Sadece Holding Register (hr) alanını aktif kullanıyoruz.
     # Coils / Discrete Inputs / Input Registers tanımlı değildir.
-    context = ModbusServerContext(devices=ModbusDeviceContext(hr=block), single=True)
+    # zero_mode=True ile client adresleri 0-tabanlı (0..9) birebir yorumlanır.
+    context = ModbusServerContext(devices=ModbusDeviceContext(hr=block, zero_mode=True), single=True)
 
     threading.Thread(
         target=beacon_sender,
@@ -167,6 +171,7 @@ def parse_args() -> argparse.Namespace:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
+    logging.getLogger("pymodbus").setLevel(logging.INFO)
     args = parse_args()
     run_server(
         name=args.name,
