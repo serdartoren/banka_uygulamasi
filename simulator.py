@@ -10,7 +10,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 
-from pymodbus.datastore import ModbusDeviceContext, ModbusSequentialDataBlock, ModbusServerContext
+from pymodbus.datastore import ModbusDeviceContext, ModbusServerContext, ModbusSparseDataBlock
 from pymodbus.server import StartTcpServer
 
 
@@ -49,7 +49,7 @@ class SimulatorState:
         logging.info("RS%d tekil testi tamamlandı.", index + 1)
 
 
-class SimulatorDataBlock(ModbusSequentialDataBlock):
+class SimulatorDataBlock(ModbusSparseDataBlock):
     """Register yazımlarını yakalayan Modbus data block."""
 
     VALUE_IDLE = 0
@@ -65,13 +65,13 @@ class SimulatorDataBlock(ModbusSequentialDataBlock):
     REG_SINGLE_TEST_END = 9
 
     def __init__(self, state: SimulatorState) -> None:
-        # pymodbus 3.x sequential block adresi 1 tabanlı bekliyor
-        super().__init__(1, [0] * 10)
+        # 0..9 holding register ofsetlerini doğrudan kabul eder
+        super().__init__({i: 0 for i in range(10)})
         self.state = state
 
     def getValues(self, address, count=1):  # noqa: N802 - pymodbus API
         values = super().getValues(address, count=count)
-        start_reg = address - 1
+        start_reg = address
         end_reg = start_reg + count - 1
         logging.info("MODBUS READ  | hr[%d..%d] -> %s", start_reg, end_reg, values)
         return values
@@ -81,10 +81,10 @@ class SimulatorDataBlock(ModbusSequentialDataBlock):
         # Biz dokümantasyonda 0..9 ofset kullanıyoruz, bu yüzden normalize ediyoruz.
         super().setValues(address, values)
 
-        logging.info("MODBUS WRITE | hr[%d..%d] <- %s", address - 1, (address - 1) + len(values) - 1, values)
+        logging.info("MODBUS WRITE | hr[%d..%d] <- %s", address, address + len(values) - 1, values)
 
         for offset, value in enumerate(values):
-            reg = (address - 1) + offset
+            reg = address + offset
             if reg == self.REG_ALL_TEST and value == self.VALUE_REQUEST:
                 threading.Thread(target=self._run_all_test_and_reset, daemon=True).start()
             elif reg == self.REG_CLEAR_ALL and value == self.VALUE_REQUEST:
@@ -95,15 +95,15 @@ class SimulatorDataBlock(ModbusSequentialDataBlock):
 
     def _clear_all_registers(self) -> None:
         self.state.clear()
-        super().setValues(1, [0] * 10)
+        super().setValues(0, [0] * 10)
         logging.info("10 register sıfırlandı.")
 
     def _run_all_test_and_reset(self) -> None:
         self.state.run_all_output_test()
-        super().setValues(self.REG_ALL_TEST + 1, [0])
+        super().setValues(self.REG_ALL_TEST, [0])
 
     def _run_single_test_with_status(self, index: int) -> None:
-        reg_addr = self.REG_SINGLE_TEST_START + index + 1
+        reg_addr = self.REG_SINGLE_TEST_START + index
         try:
             super().setValues(reg_addr, [self.VALUE_RUNNING])
             self.state.run_single_output_test(index)
