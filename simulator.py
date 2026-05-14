@@ -69,10 +69,19 @@ class SimulatorDataBlock(ModbusSequentialDataBlock):
         super().__init__(1, [0] * 10)
         self.state = state
 
+    def getValues(self, address, count=1):  # noqa: N802 - pymodbus API
+        values = super().getValues(address, count=count)
+        start_reg = address - 1
+        end_reg = start_reg + count - 1
+        logging.info("MODBUS READ  | hr[%d..%d] -> %s", start_reg, end_reg, values)
+        return values
+
     def setValues(self, address, values):  # noqa: N802 - pymodbus API
         # pymodbus datastore iç adreslemeyi çoğu sürümde 1 tabanlı verir.
         # Biz dokümantasyonda 0..9 ofset kullanıyoruz, bu yüzden normalize ediyoruz.
         super().setValues(address, values)
+
+        logging.info("MODBUS WRITE | hr[%d..%d] <- %s", address - 1, (address - 1) + len(values) - 1, values)
 
         for offset, value in enumerate(values):
             reg = (address - 1) + offset
@@ -122,7 +131,7 @@ def beacon_sender(name: str, ip: str, modbus_port: int, udp_port: int, interval:
 
     while True:
         sock.sendto(message, ("255.255.255.255", udp_port))
-        logging.info("Beacon gönderildi: %s", message.decode())
+        logging.info("Beacon gönderildi.")
         time.sleep(interval)
 
 
