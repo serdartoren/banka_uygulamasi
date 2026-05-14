@@ -138,6 +138,15 @@ def beacon_sender(name: str, ip: str, modbus_port: int, udp_port: int, interval:
         time.sleep(interval)
 
 
+
+
+def build_device_context(block):
+    """pymodbus sürümleri arası uyumlu device context üretir."""
+    try:
+        return ModbusDeviceContext(hr=block, zero_mode=True)
+    except TypeError:
+        return ModbusDeviceContext(hr=block)
+
 def run_server(name: str, modbus_port: int, beacon_udp_port: int, beacon_interval: float, test_step_delay: float) -> None:
     ip = resolve_local_ip()
     logging.info("Cihaz adı: %s", name)
@@ -147,8 +156,8 @@ def run_server(name: str, modbus_port: int, beacon_udp_port: int, beacon_interva
     block = SimulatorDataBlock(state)
     # Sadece Holding Register (hr) alanını aktif kullanıyoruz.
     # Coils / Discrete Inputs / Input Registers tanımlı değildir.
-    # zero_mode=True ile client adresleri 0-tabanlı (0..9) birebir yorumlanır.
-    context = ModbusServerContext(devices=ModbusDeviceContext(hr=block, zero_mode=True), single=True)
+    device_context = build_device_context(block)
+    context = ModbusServerContext(devices=device_context, single=True)
 
     threading.Thread(
         target=beacon_sender,

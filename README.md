@@ -119,3 +119,5 @@ Bu istemci sırasıyla:
 > Eğer yanıtta `83 02` görürseniz bu "Illegal Data Address" demektir (yanlış register adresi/uzunluğu).
 
 - Sunucu gelen read/write ve trigger olaylarını terminale loglar (MODBUS READ/WRITE ve TRIGGER satırları).
+
+- Not: `simulator.py`, `pymodbus` sürümüne göre `zero_mode` parametresini otomatik uyumlu şekilde ele alır.
