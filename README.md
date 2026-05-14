@@ -1,35 +1,3 @@
-# RS8 Modbus TCP Simülatörü
-
-Bu proje, **8 adet RS çıkışı olan bir cihazın otomasyon test simülasyonu** için hazırlanmıştır.
-Gerçek RS haberleşme katmanı yoktur; yalnızca Modbus register davranışı ve çıkış test akışını simüle eder.
-
-## Özellikler
-
-- Modbus TCP server olarak çalışır.
-- Toplam **10 adet holding register** sunar (okunabilir/yazılabilir).
-- Cihaz IP aldıktan sonra UDP broadcast ile beacon mesajı yayınlar:
-  - `name=<cihaz_adi>;ip=<ip>;port=<modbus_port>`
-- 8 çıkışın toplu testi ve tek tek testleri register tetikleyicileri ile yönetilir.
-
-## Kurulum
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-# simulator sunucusu için pyModbusTCP, master tester için pymodbus kullanılır
-```
-
-## Çalıştırma
-
-```bash
-python simulator.py --name RS8-SIM --modbus-port 5020 --beacon-udp-port 37020
-```
-
-Opsiyonel parametreler:
-
-- `--beacon-interval`: Beacon gönderim aralığı (sn), varsayılan `2.0`
-- `--test-step-delay`: Test sırasında kanal adımları arası bekleme (sn), varsayılan `0.5`
 
 ## Register Haritası (Enum Açıklamaları)
 
@@ -71,9 +39,7 @@ Aşağıdaki tüm register'lar Holding Register (4x) olup hem okunabilir hem yaz
 
 ## Notlar
 
-- Modbus server `0.0.0.0` üzerinde dinler.
 - Beacon, `255.255.255.255:<beacon_udp_port>` adresine broadcast edilir.
-- Gerçek RS sürücü işlemleri dahil değildir; bu uygulama otomasyon ekipleri için simülasyondur.
 
 ## RS Test Durum Kodları
 
@@ -81,7 +47,7 @@ Aşağıdaki tüm register'lar Holding Register (4x) olup hem okunabilir hem yaz
 - `1`: Test isteği
 - `2`: Test devam ediyor
 - `3`: Test başarılı
-- `-1`: Test hatalı (Modbus register değerinde `65535` / `0xFFFF`)
+- `-1`: Test hatalı 
 
 ## Modbus Alan Tipi
 
@@ -91,42 +57,3 @@ Bu simülatörde kullanılan register tipleri **Holding Register (4x)** tipinded
 
 Coils (0x), Discrete Inputs (1x) ve Input Registers (3x) bu senaryo için kullanılmaz.
 
-
-## Master Test Client
-
-Simülatörü test etmek için `master_tester.py` dosyası eklendi.
-
-```bash
-python master_tester.py --host 127.0.0.1 --port 5020 --unit-id 1
-```
-
-Bu istemci sırasıyla:
-1. Register'ları okur.
-2. `REG_CLEAR_ALL` yazar.
-3. `REG_RS1_TEST` için `1 -> 2 -> 3/-1` akışını takip eder.
-4. `REG_ALL_TEST` yazar ve tekrar register okur.
-- Not: `master_tester.py`, farklı `pymodbus` sürümlerindeki `slave/device_id` parametre farkını otomatik yönetir.
-- Not: İstemci, sunucuya göre register adresleme tabanını (0 veya 1) otomatik algılar.
-- Eğer yine okuma hatası alırsanız önce `simulator.py` sürecinin çalıştığını ve portun (`5020`) açık olduğunu doğrulayın.
-
-
-### Hercules için örnek HEX komutlar
-
-- 10 register oku (`0..9`): `00 01 00 00 00 06 01 03 00 00 00 0A`
-- `REG_ALL_TEST` tetikle (`reg0=1`): `00 02 00 00 00 06 01 06 00 00 00 01`
-- `REG_CLEAR_ALL` tetikle (`reg1=1`): `00 03 00 00 00 06 01 06 00 01 00 01`
-- RS1 tekil test (`reg2=1`): `00 04 00 00 00 06 01 06 00 02 00 01`
-
-> Eğer yanıtta `83 02` görürseniz bu "Illegal Data Address" demektir (yanlış register adresi/uzunluğu).
-
-- Sunucu gelen read/write ve trigger olaylarını terminale loglar (MODBUS READ/WRITE ve TRIGGER satırları).
-
-- Not: `simulator.py`, `pymodbus` sürümüne göre `zero_mode` parametresini otomatik uyumlu şekilde ele alır.
-
-- Not: Sunucu, bazı pymodbus sürümlerindeki 0/1 tabanlı adresleme farklarını tolere edecek şekilde gelen yazımları normalize eder.
-- Not: Beacon logu terminali doldurmaması için seyrek yazdırılır; Modbus READ/WRITE/TRIGGER logları görünür kalır.
-
-
-- Not: `simulator.py` artık `pyModbusTCP` tabanlıdır; Hercules ile 0..9 holding register yazımları doğrudan çalışır.
-
-- Not: Yeni sürümde `pyModbusTCP` için deprecated `DataBank` class methodları kullanılmaz; instance tabanlı `server.data_bank` API kullanılır.
