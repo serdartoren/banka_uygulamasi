@@ -105,3 +105,4 @@ Bu istemci sırasıyla:
 3. `REG_RS1_TEST` için `1 -> 2 -> 3/-1` akışını takip eder.
 4. `REG_ALL_TEST` yazar ve tekrar register okur.
 - Not: `master_tester.py`, farklı `pymodbus` sürümlerindeki `slave/device_id` parametre farkını otomatik yönetir.
+- Not: İstemci, sunucuya göre register adresleme tabanını (0 veya 1) otomatik algılar.
