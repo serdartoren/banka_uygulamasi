@@ -133,6 +133,8 @@ def run_server(name: str, modbus_port: int, beacon_udp_port: int, beacon_interva
 
     state = SimulatorState(test_step_delay=test_step_delay)
     block = SimulatorDataBlock(state)
+    # Sadece Holding Register (hr) alanını aktif kullanıyoruz.
+    # Coils / Discrete Inputs / Input Registers tanımlı değildir.
     context = ModbusServerContext(devices=ModbusDeviceContext(hr=block), single=True)
 
     threading.Thread(

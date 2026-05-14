@@ -81,3 +81,11 @@ Aşağıdaki tüm register'lar Holding Register (4x) olup hem okunabilir hem yaz
 - `2`: Test devam ediyor
 - `3`: Test başarılı
 - `-1`: Test hatalı (Modbus register değerinde `65535` / `0xFFFF`)
+
+## Modbus Alan Tipi
+
+Bu simülatörde kullanılan register tipleri **Holding Register (4x)** tipindedir.
+- Okuma için: Function Code **03 (Read Holding Registers)**
+- Yazma için: Function Code **06 (Write Single Register)** veya **16 (Write Multiple Registers)**
+
+Coils (0x), Discrete Inputs (1x) ve Input Registers (3x) bu senaryo için kullanılmaz.
