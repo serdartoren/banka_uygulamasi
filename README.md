@@ -121,3 +121,6 @@ Bu istemci sırasıyla:
 - Sunucu gelen read/write ve trigger olaylarını terminale loglar (MODBUS READ/WRITE ve TRIGGER satırları).
 
 - Not: `simulator.py`, `pymodbus` sürümüne göre `zero_mode` parametresini otomatik uyumlu şekilde ele alır.
+
+- Not: Sunucu, bazı pymodbus sürümlerindeki 0/1 tabanlı adresleme farklarını tolere edecek şekilde gelen yazımları normalize eder.
+- Not: Beacon logu terminali doldurmaması için seyrek yazdırılır; Modbus READ/WRITE/TRIGGER logları görünür kalır.

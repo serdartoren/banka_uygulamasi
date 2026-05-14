@@ -66,7 +66,9 @@ class SimulatorDataBlock(ModbusSparseDataBlock):
 
     def __init__(self, state: SimulatorState) -> None:
         # 0..9 holding register ofsetlerini doğrudan kabul eder
-        super().__init__({i: 0 for i in range(10)})
+        # Hem 0-tabanlı hem 1-tabanlı client adresleme varyasyonlarını tolere etmek için
+        # 0..19 aralığında sparse map açıyoruz. Mantıksal registerlar yine 0..9.
+        super().__init__({i: 0 for i in range(20)})
         self.state = state
 
     def getValues(self, address, count=1):  # noqa: N802 - pymodbus API
@@ -84,16 +86,17 @@ class SimulatorDataBlock(ModbusSparseDataBlock):
         logging.info("MODBUS WRITE | hr[%d..%d] <- %s", address, address + len(values) - 1, values)
 
         for offset, value in enumerate(values):
-            reg = address + offset
+            raw_reg = address + offset
+            reg = raw_reg if 0 <= raw_reg <= 9 else (raw_reg - 1)
             if reg == self.REG_ALL_TEST and value == self.VALUE_REQUEST:
-                logging.info("TRIGGER: REG_ALL_TEST (reg=%d) isteği alındı.", reg)
+                logging.info("TRIGGER: REG_ALL_TEST (raw=%d, reg=%d) isteği alındı.", raw_reg, reg)
                 threading.Thread(target=self._run_all_test_and_reset, daemon=True).start()
             elif reg == self.REG_CLEAR_ALL and value == self.VALUE_REQUEST:
-                logging.info("TRIGGER: REG_CLEAR_ALL (reg=%d) isteği alındı.", reg)
+                logging.info("TRIGGER: REG_CLEAR_ALL (raw=%d, reg=%d) isteği alındı.", raw_reg, reg)
                 self._clear_all_registers()
             elif self.REG_SINGLE_TEST_START <= reg <= self.REG_SINGLE_TEST_END and value == self.VALUE_REQUEST:
                 index = reg - self.REG_SINGLE_TEST_START
-                logging.info("TRIGGER: REG_RS%d_TEST (reg=%d) isteği alındı.", index + 1, reg)
+                logging.info("TRIGGER: REG_RS%d_TEST (raw=%d, reg=%d) isteği alındı.", index + 1, raw_reg, reg)
                 threading.Thread(target=self._run_single_test_with_status, args=(index,), daemon=True).start()
 
     def _clear_all_registers(self) -> None:
@@ -132,9 +135,12 @@ def beacon_sender(name: str, ip: str, modbus_port: int, udp_port: int, interval:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
+    count = 0
     while True:
         sock.sendto(message, ("255.255.255.255", udp_port))
-        logging.info("Beacon gönderildi.")
+        count += 1
+        if count % 10 == 1:
+            logging.info("Beacon gönderiliyor (periyodik).")
         time.sleep(interval)
 
 
